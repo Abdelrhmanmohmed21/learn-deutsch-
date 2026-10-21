@@ -1,3 +1,4 @@
+# انسخ الملف ده باسم wrangler.toml لو هترفع بأوامر wrangler بس. لو بترفع من GitHub سيبه زي ما هو.
 # إعدادات Cloudflare Pages (للي بيرفع بالأوامر wrangler بدل GitHub)
 name = "almani"
 pages_build_output_dir = "."
