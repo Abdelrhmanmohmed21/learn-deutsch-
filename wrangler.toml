@@ -1,0 +1,12 @@
+# إعدادات Cloudflare Pages (للي بيرفع بالأوامر wrangler بدل GitHub)
+name = "almani"
+pages_build_output_dir = "."
+compatibility_date = "2026-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "almani-db"
+database_id = "ضع-هنا-رقم-قاعدة-البيانات"
+
+[vars]
+ADMIN_EMAIL = "ضع-هنا-إيميلك@example.com"

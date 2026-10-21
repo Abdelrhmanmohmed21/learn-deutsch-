@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>لوحة التحكم · ألماني من الصفر</title>
+<link rel="icon" href="../icons/favicon.svg">
+<style>
+:root{--bg:#F5F5F4;--surface:#fff;--surface-2:#F0EFED;--ink:#141416;--muted:#6B6B70;--line:#E4E3E0;--accent:#C8102E;--ok:#17845A;--bad:#C8102E;--r:14px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0C0C0D;--surface:#161618;--surface-2:#1F1F22;--ink:#F2F2F3;--muted:#9A9AA0;--line:#2A2A2E;--accent:#FF4A5E;--ok:#3CCB8A;--bad:#FF6B7A;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,"Segoe UI",Tahoma,sans-serif}
+.de{font-family:Inter,system-ui,sans-serif;direction:ltr;unicode-bidi:isolate}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header b{font-size:17px}header b i{color:var(--accent);font-style:normal}
+nav{display:flex;gap:4px;overflow-x:auto;flex:1}
+nav button{border:0;background:none;color:var(--muted);padding:8px 12px;border-radius:10px;font:inherit;cursor:pointer;white-space:nowrap}
+nav button[aria-current]{background:var(--surface-2);color:var(--ink);font-weight:700}
+main{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:24px;margin:4px 0 16px}h2{font-size:18px;margin:22px 0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stat b{display:block;font-size:26px}.stat small{color:var(--muted)}
+.btn{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;min-height:40px}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;direction:ltr;min-height:60vh;line-height:1.5}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1;min-width:120px}.row>.btn{flex:none}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}th{color:var(--muted);font-weight:600}
+tr.clickable{cursor:pointer}tr.clickable:hover{background:var(--surface-2)}
+.g-m{color:#2563EB}.g-f{color:#C8102E}.g-n{color:#17845A}.g-p{color:#7C3AED}
+@media (prefers-color-scheme:dark){.g-m{color:#6EA8FF}.g-f{color:#FF6B7A}.g-n{color:#3CCB8A}.g-p{color:#B794F6}}
+.muted{color:var(--muted)}.small{font-size:13px}.ok{color:var(--ok)}.bad{color:var(--bad)}
+.msg{min-height:22px;margin:8px 0;font-size:14px}
+dialog{border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);width:min(560px,94vw);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.login{max-width:380px;margin:12vh auto}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;margin:12px 0}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--surface-2);font-size:12px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<dialog id="dlg"></dialog>
+<script>
+const API=(window.API_BASE||"/api").replace(/\/$/,"");
+const $=s=>document.querySelector(s);const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let auth=null;try{auth=JSON.parse(localStorage.getItem("admin_auth")||"null")}catch(e){}
+let tab="home",wq={level:"",q:"",page:0};
+const ERR={wrong:"البريد أو كلمة المرور غير صحيحة.",too_many:"محاولات كثيرة. حاول بعد ربع ساعة.",forbidden:"ليست لديك صلاحية.",auth:"انتهت الجلسة، سجّل الدخول من جديد.",no_db:"قاعدة البيانات غير مربوطة بالمشروع.",level:"المستوى غير صحيح.",gender:"الأداة غير صحيحة.",required:"الكلمة والمعنى مطلوبان.",shape:"شكل البيانات غير صحيح لهذا الملف.",levels_shape:"كل مستوى يحتاج id وwords وgrammar.",dialogs_shape:"كل حوار يحتاج id وl وq.",too_large:"الملف كبير جدًا.",self:"لا يمكنك إزالة صلاحية المدير عن نفسك.",server:"خطأ في الخادم."};
+async function call(m,p,b){const r=await fetch(API+"/"+p,{method:m,headers:{"Content-Type":"application/json",...(auth?{Authorization:"Bearer "+auth.token}:{})},body:b?JSON.stringify(b):undefined});
+  let j={};try{j=await r.json()}catch(e){}if(r.status===401&&p!=="auth/login"){logout();throw new Error(ERR.auth)}if(!r.ok)throw new Error(ERR[j.error]||j.error||("خطأ "+r.status));return j}
+function logout(){if(auth)fetch(API+"/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+auth.token}}).catch(()=>{});auth=null;localStorage.removeItem("admin_auth");draw()}
+const date=t=>t?new Date(t).toLocaleString("ar-EG",{dateStyle:"medium",timeStyle:"short"}):"—";
+const G={"":"","m":"der","f":"die","n":"das","p":"die (جمع)"};
+
+function draw(){
+  if(!auth){$("#root").innerHTML=`<main class="login"><div class="card"><h1>لوحة التحكم</h1><p class="muted small">سجّل الدخول بحساب المدير أو المحرر.</p>
+    <form id="lf"><label for="le">البريد الإلكتروني</label><input id="le" type="email" autocomplete="username" dir="ltr" required>
+    <label for="lp">كلمة المرور</label><input id="lp" type="password" autocomplete="current-password" dir="ltr" required>
+    <div class="msg bad" id="lm" role="alert"></div><button class="btn primary" style="width:100%">دخول</button></form>
+    <p class="small muted" style="margin-bottom:0"><a href="../">العودة إلى الموقع</a></p></div></main>`;
+    $("#lf").onsubmit=async e=>{e.preventDefault();$("#lm").textContent="";try{const j=await call("POST","auth/login",{email:$("#le").value,password:$("#lp").value});
+      if(!["admin","editor"].includes(j.user.role)){$("#lm").textContent="هذا الحساب ليست له صلاحية الدخول إلى لوحة التحكم.";return}
+      auth={token:j.token,...j.user};localStorage.setItem("admin_auth",JSON.stringify(auth));draw()}catch(x){$("#lm").textContent=x.message}};return}
+  const tabs=[["home","الرئيسية"],["words","الكلمات"],["docs","المحتوى"]].concat(auth.role==="admin"?[["users","المستخدمون"]]:[]);
+  $("#root").innerHTML=`<header><b>ألماني من الصفر<i>.</i> · لوحة التحكم</b><nav>${tabs.map(([k,t])=>`<button data-t="${k}" ${tab===k?'aria-current="page"':""}>${t}</button>`).join("")}</nav>
+    <span class="small muted">${esc(auth.email)} <span class="pill">${auth.role==="admin"?"مدير":"محرر"}</span></span><button class="btn" id="lo">خروج</button></header><main id="m"><p class="muted">جارٍ التحميل…</p></main>`;
+  document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});$("#lo").onclick=logout;
+  ({home:home,words:words,docs:docs,users:users})[tab]().catch(e=>{$("#m").innerHTML=`<p class="bad">${esc(e.message)}</p>`})}
+
+async function home(){const s=await call("GET","admin/stats");const total=s.levels.reduce((a,x)=>a+x.n,0);
+  const empty=!total;
+  $("#m").innerHTML=`<h1>نظرة عامة</h1>${empty?`<div class="card" style="border-color:var(--accent)"><b>قاعدة البيانات فارغة</b><p class="small muted">استورد محتوى الموقع الحالي (القاموس والدروس والموضوعات والحوارات والنماذج) إلى قاعدة البيانات لتتمكن من تعديله من هنا. يستغرق دقيقة تقريبًا.</p>${auth.role==="admin"?`<button class="btn primary" id="imp">استيراد المحتوى الآن</button>`:`<p class="small">يحتاج هذا إلى حساب مدير.</p>`}<div class="msg" id="impm" role="status"></div></div>`:""}<div class="grid">
+   <div class="card stat"><b>${s.users}</b><small>مستخدم مسجّل</small></div><div class="card stat"><b>${s.active7}</b><small>نشط في آخر 7 أيام</small></div>
+   <div class="card stat"><b>${total}</b><small>كلمة في القاموس</small></div><div class="card stat"><b>${s.docs.length}</b><small>ملف محتوى</small></div></div>
+   <h2>الكلمات حسب المستوى</h2><div class="card tw"><table><tr>${s.levels.map(x=>`<th>${x.level}</th>`).join("")}</tr><tr>${s.levels.map(x=>`<td>${x.n}</td>`).join("")}</tr></table></div>
+   <h2>ملفات المحتوى</h2><div class="card tw"><table><tr><th>الملف</th><th>الحجم</th><th>آخر تعديل</th></tr>${s.docs.map(d=>`<tr><td>${esc(d.name)}</td><td>${Math.round(d.size/1024)} ك.ب</td><td>${date(d.updated_at)}</td></tr>`).join("")}</table></div>
+   <h2>آخر التعديلات</h2><div class="card tw"><table><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>العنصر</th></tr>${s.log.map(l=>`<tr><td>${date(l.at)}</td><td>${esc(l.email||"")}</td><td>${esc(l.action)}</td><td>${esc(l.target)}</td></tr>`).join("")||`<tr><td colspan="4" class="muted">لا توجد تعديلات بعد.</td></tr>`}</table></div>
+   <p class="small muted">نسخة المحتوى: ${esc(s.version||"—")}. أي تعديل يظهر في الموقع فورًا.</p>`;
+  const ib=$("#imp");if(ib)ib.onclick=importAll}
+async function loadStatic(f,expr){const t=await (await fetch("../data/"+f+"?raw="+Date.now(),{cache:"no-store"})).text();const window={};return new Function("window",t+";\nreturn "+expr)(window)}
+async function importAll(){const m=$("#impm"),b=$("#imp");b.disabled=true;const say=t=>m.textContent=t;
+  try{say("جارٍ قراءة ملفات الموقع…");
+    const DICT=await loadStatic("dict.js","window.__DICT"),LEVELS=await loadStatic("levels.js","LEVELS"),THEMES=await loadStatic("themes.js","THEMES"),VERBS=await loadStatic("verbs.js","VERBS"),
+      GEX=await loadStatic("grammar-ex.js","GEX"),TOPICS=await loadStatic("topics.js","TOPICS"),C=await loadStatic("content.js","{DIALOGS,MOCK}"),AL=await loadStatic("aliases.js","AR_ALIAS");
+    say("جارٍ حفظ الدروس والمحتوى…");
+    await call("POST","admin/import",{reset:true,docs:{levels:LEVELS,themes:THEMES,verbs:VERBS,gex:GEX,topics:TOPICS,dialogs:C.DIALOGS,mock:C.MOCK,aliases:AL},dict_levels:DICT.map(D=>({id:D.id,title:D.title}))});
+    const rows=[];DICT.forEach(D=>D.words.forEach((w,i)=>rows.push([D.id,i,w[0]||"",w[1],w[2],w[3]||"",w[4]||"",w[5]||"",w[6]||""])));
+    for(let i=0;i<rows.length;i+=500){say("جارٍ حفظ الكلمات… "+Math.min(i+500,rows.length)+" من "+rows.length);await call("POST","admin/import",{words:rows.slice(i,i+500),done:i+500>=rows.length})}
+    say("تم الاستيراد بنجاح.");setTimeout(home,800)}
+  catch(x){say("تعذّر الاستيراد: "+x.message);b.disabled=false}}
+
+async function words(){const qs=new URLSearchParams({level:wq.level,q:wq.q,page:wq.page});const r=await call("GET","admin/words?"+qs);const pages=Math.max(1,Math.ceil(r.total/r.per));
+  $("#m").innerHTML=`<h1>كلمات القاموس</h1><div class="row"><select id="wl" aria-label="المستوى"><option value="">كل المستويات</option>${["A1","A2","B1","B2","C1","C2"].map(l=>`<option ${wq.level===l?"selected":""}>${l}</option>`).join("")}</select>
+    <input id="wq" placeholder="ابحث بالألمانية أو العربية" value="${esc(wq.q)}"><button class="btn" id="ws">بحث</button><button class="btn primary" id="wn">+ كلمة جديدة</button></div>
+    <p class="small muted">${r.total} نتيجة</p><div class="card tw" style="padding:0"><table><tr><th>المستوى</th><th>الكلمة</th><th>المعنى</th><th>الجمع</th><th>المثال</th></tr>
+    ${r.items.map(w=>`<tr class="clickable" data-id="${w.id}"><td>${w.level}</td><td class="de"><b class="g-${w.gender}">${esc(G[w.gender]?G[w.gender].split(" ")[0]+" ":"")}</b>${esc(w.word)}</td><td>${esc(w.meaning)}</td><td class="de">${esc(w.plural)}</td><td><span class="de small">${esc(w.ex_de)}</span><br><span class="small muted">${esc(w.ex_ar)}</span></td></tr>`).join("")||`<tr><td colspan="5" class="muted">لا توجد نتائج.</td></tr>`}</table></div>
+    <div class="pager"><button class="btn" id="pp" ${wq.page<=0?"disabled":""}>السابق</button><span class="small">${wq.page+1} / ${pages}</span><button class="btn" id="pn" ${wq.page+1>=pages?"disabled":""}>التالي</button></div>`;
+  const go=()=>{wq.level=$("#wl").value;wq.q=$("#wq").value.trim();wq.page=0;words()};$("#ws").onclick=go;$("#wl").onchange=go;$("#wq").onkeydown=e=>{if(e.key==="Enter")go()};
+  $("#pp").onclick=()=>{wq.page--;words()};$("#pn").onclick=()=>{wq.page++;words()};
+  $("#wn").onclick=()=>editWord({level:wq.level||"A1",gender:"",word:"",meaning:"",pron:"",ex_de:"",ex_ar:"",plural:""});
+  document.querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>editWord(r.items.find(w=>w.id==tr.dataset.id)))}
+function editWord(w){const d=$("#dlg");const isNew=!w.id;
+  d.innerHTML=`<form id="wf" method="dialog"><h2 style="margin-top:0">${isNew?"كلمة جديدة":"تعديل كلمة"}</h2>
+   <div class="row"><div><label for="f_level">المستوى</label><select id="f_level">${["A1","A2","B1","B2","C1","C2"].map(l=>`<option ${w.level===l?"selected":""}>${l}</option>`).join("")}</select></div>
+   <div><label for="f_gender">الأداة</label><select id="f_gender">${Object.entries(G).map(([k,v])=>`<option value="${k}" ${w.gender===k?"selected":""}>${v||"بلا أداة"}</option>`).join("")}</select></div></div>
+   <label for="f_word">الكلمة بالألمانية</label><input id="f_word" class="de" value="${esc(w.word)}" required>
+   <label for="f_meaning">المعنى بالعربية</label><input id="f_meaning" value="${esc(w.meaning)}" required>
+   <div class="row"><div><label for="f_pron">النطق بالعربية</label><input id="f_pron" value="${esc(w.pron)}"></div><div><label for="f_plural">الجمع</label><input id="f_plural" class="de" value="${esc(w.plural)}"></div></div>
+   <label for="f_ex_de">جملة مثال بالألمانية</label><input id="f_ex_de" class="de" value="${esc(w.ex_de)}">
+   <label for="f_ex_ar">ترجمة المثال</label><input id="f_ex_ar" value="${esc(w.ex_ar)}">
+   <div class="msg bad" id="wm" role="alert"></div>
+   <div class="row" style="justify-content:space-between"><div class="row" style="flex:none"><button class="btn primary" id="wsave" value="">حفظ</button><button class="btn" type="button" id="wc">إلغاء</button></div>${isNew?"":`<button class="btn danger" type="button" id="wd">حذف</button>`}</div></form>`;
+  d.showModal();$("#wc").onclick=()=>d.close();
+  $("#wf").onsubmit=async e=>{e.preventDefault();const b={};["level","gender","word","meaning","pron","plural","ex_de","ex_ar"].forEach(k=>b[k]=$("#f_"+k).value);
+    try{await call(isNew?"POST":"PUT",isNew?"admin/words":"admin/words/"+w.id,b);d.close();words()}catch(x){$("#wm").textContent=x.message}};
+  const del=$("#wd");if(del)del.onclick=async()=>{if(!confirm("حذف الكلمة «"+w.word+"» نهائيًا؟"))return;try{await call("DELETE","admin/words/"+w.id);d.close();words()}catch(x){$("#wm").textContent=x.message}}}
+
+const DOCS={levels:"الدروس والقواعد وكلمات الدروس",themes:"كلمات حسب الموضوع",verbs:"الأفعال الشاذة",gex:"تمارين القواعد",topics:"الموضوعات المكتوبة",dialogs:"الحوارات",mock:"نماذج الامتحانات",aliases:"المعاني الإضافية للبحث"};
+let docName="topics";
+async function docs(){$("#m").innerHTML=`<h1>ملفات المحتوى</h1><p class="small muted">عدّل الملف بصيغة JSON. يُفحص الملف قبل الحفظ، ويظهر التعديل في الموقع فورًا. احفظ نسخة احتياطية قبل أي تعديل كبير.</p>
+   <div class="row"><select id="dn" aria-label="الملف">${Object.entries(DOCS).map(([k,v])=>`<option value="${k}" ${docName===k?"selected":""}>${v} (${k})</option>`).join("")}</select>
+   <button class="btn" id="dfmt">تنسيق</button><button class="btn" id="ddl">نسخة احتياطية</button><button class="btn primary" id="dsv">حفظ</button></div>
+   <div class="msg" id="dm" role="status"></div><textarea id="dt" spellcheck="false" aria-label="محتوى الملف">جارٍ التحميل…</textarea>`;
+  $("#dn").onchange=()=>{docName=$("#dn").value;docs()};
+  const r=await call("GET","admin/docs/"+docName);$("#dt").value=JSON.stringify(r.body,null,1);$("#dm").innerHTML=`<span class="muted">آخر تعديل: ${date(r.updated_at)}</span>`;
+  const parse=()=>{try{return JSON.parse($("#dt").value)}catch(e){$("#dm").innerHTML=`<span class="bad">خطأ في صيغة JSON: ${esc(e.message)}</span>`;return undefined}};
+  $("#dfmt").onclick=()=>{const v=parse();if(v!==undefined){$("#dt").value=JSON.stringify(v,null,1);$("#dm").innerHTML=`<span class="ok">الصيغة سليمة.</span>`}};
+  $("#ddl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([$("#dt").value],{type:"application/json"}));a.download=docName+"-"+new Date().toISOString().slice(0,10)+".json";a.click()};
+  $("#dsv").onclick=async()=>{const v=parse();if(v===undefined)return;$("#dsv").disabled=true;try{await call("PUT","admin/docs/"+docName,{body:v});$("#dm").innerHTML=`<span class="ok">حُفظ. التعديل ظاهر في الموقع الآن.</span>`}catch(x){$("#dm").innerHTML=`<span class="bad">${esc(x.message)}</span>`}$("#dsv").disabled=false}}
+
+async function users(){const r=await call("GET","admin/users");const R={student:"طالب",editor:"محرر",admin:"مدير"};
+  $("#m").innerHTML=`<h1>المستخدمون</h1><p class="small muted">المحرر يستطيع تعديل الكلمات والمحتوى، والمدير يستطيع أيضًا إدارة المستخدمين.</p><div class="card tw" style="padding:0"><table><tr><th>البريد</th><th>الاسم</th><th>التسجيل</th><th>آخر نشاط</th><th>الصلاحية</th></tr>
+   ${r.items.map(u=>`<tr><td class="de">${esc(u.email)}</td><td>${esc(u.name)}</td><td class="small">${date(u.created_at)}</td><td class="small">${date(u.last_seen)}</td>
+   <td><select data-u="${u.id}" aria-label="صلاحية ${esc(u.email)}">${Object.entries(R).map(([k,v])=>`<option value="${k}" ${u.role===k?"selected":""}>${v}</option>`).join("")}</select></td></tr>`).join("")}</table></div><div class="msg" id="um" role="status"></div>`;
+  document.querySelectorAll("[data-u]").forEach(s=>s.onchange=async()=>{try{await call("PUT","admin/users/"+s.dataset.u,{role:s.value});$("#um").innerHTML=`<span class="ok">حُفظت الصلاحية.</span>`}catch(x){$("#um").innerHTML=`<span class="bad">${esc(x.message)}</span>`;users()}})}
+draw();
+</script>
+</body>
+</html>
